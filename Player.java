@@ -3,6 +3,7 @@ import java.util.Map;
 import java.util.Collection;
 import java.util.Arrays;
 import java.util.Scanner;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -92,8 +93,8 @@ class Player {
 				if (droneX > 5000) {
 					leftRight = StartLeftRight.RIGHT;
 				}
-				strategy = DroneStrategy.TYPE0;
-				for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE0)) {
+				strategy = DroneStrategy.TYPE2;
+				for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE2)) {
 					if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
 						return;
 					}
@@ -104,18 +105,21 @@ class Player {
 						return;
 					}
 				}
-				strategy = DroneStrategy.TYPE2;
+				strategy = DroneStrategy.TYPE0;
 			}
 		}
 		public int getId() {
 			return id;
 		}
-		public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Map<Integer, Creature> myScannedcreatures) {
+		public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
 			if (strategy == DroneStrategy.SURFACE) {
 				return "MOVE " + droneX + " 500 0";
 			}
 			List<Integer> unscannedCreatureTypeIds = creatureTypeIds.get(strategy).stream()
-					.filter(creatureType0Id -> !scanUnsavedCreatureIds.contains(creatureType0Id) && !myScannedcreatures.containsKey(creatureType0Id))
+					.filter(creatureType0Id -> 
+						!myScanUnsavedCreatureIds.contains(creatureType0Id)
+						&& !myScannedcreatures.containsKey(creatureType0Id)
+						)
 					.toList();
 			if (unscannedCreatureTypeIds.isEmpty()) {
 				strategy = DroneStrategy.SURFACE;
@@ -124,7 +128,12 @@ class Player {
 			int moveY = strategy.getY(droneY);
 			int moveX = moveX(moveY, unscannedCreatureTypeIds);
 			int light = droneY >= (moveY - 2000) ? 1 : 0;
-			return "MOVE " + moveX + " " + moveY + " " + light;
+			String action = "MOVE " + moveX + " " + moveY + " " + light;
+			action += " id:" + id;
+			for (Entry<Integer, String> entry : creaturesRadarPositions.entrySet()) {
+				action += " creaId:" + entry.getKey() + " position:" + entry.getValue();
+			}
+			return action;
 		}
 		private int moveX(int moveY, List<Integer> unscannedCreatureType0Ids) {
 			if (droneY <= (moveY - 2000)) {
@@ -177,25 +186,7 @@ class Player {
 			return y;
 		}
 	}
-	private static class Coord {
-		private final int x;
-		private final int y;
-		public Coord(int x, int y) {
-			this.x = x;
-			this.y = y;
-		}
-		public int getX() {
-			return x;
-		}
-		public int getY() {
-			return y;
-		}
-	}
-	private static enum Color {
-	}
 	private static class Board {
-		private static final Coord COORD_LEFT_TYPE0 = new Coord(0, 4500);
-		private static final Coord COORD_LEFT_TYPE1 = new Coord(0, 7000);
 		private final int creatureCount;
 		private final Map<Integer, Creature> creatures = new HashMap<>();
 		private final Map<DroneStrategy, List<Integer>> creatureTypeIds = new HashMap<>();
@@ -206,6 +197,7 @@ class Player {
 		private int foeScore;
 		private Map<Integer, Creature> myScannedcreatures = new HashMap<>();
 		private Map<Integer, Creature> myUnscannedcreatures = new HashMap<>();
+		private Set<Integer> myScanUnsavedCreatureIds = new HashSet<>();
 		private Map<Integer, Creature> foeScannedcreatures = new HashMap<>();
 		private Map<Integer, Creature> foeUnscannedcreatures = new HashMap<>();
 		private Map<Integer, Drone> myDrones = new HashMap<>();
@@ -295,14 +287,17 @@ class Player {
 				}
 			}
 			int droneScanCount = input.nextLineAsSingleInt();
+			myScanUnsavedCreatureIds = new HashSet<>();
 	        for (int i = 0; i < droneScanCount; i++) {
 	        	int[] line = input.nextLineAsInts();
 	            int droneId = line[0];
 	            Drone drone = myDrones.get(droneId);
+	            int creatureId = line[1];
 	            if (drone == null) {
 	            	drone = foeDrones.get(droneId);
+	            } else {
+	            	myScanUnsavedCreatureIds.add(creatureId);
 	            }
-	            int creatureId = line[1];
 	            drone.addScanUnsaved(creatureId);
 	        }
 			int visibleCreatureCount = input.nextLineAsSingleInt();
@@ -333,7 +328,7 @@ class Player {
 			List<String> actions = new ArrayList<>();
 			for (Drone myDrone : myDrones.values()) {
 				myDrone.updateStrategy(creatureTypeIds, myScannedcreatures);
-				actions.add(myDrone.getAction(creatureTypeIds, myScannedcreatures));
+				actions.add(myDrone.getAction(creatureTypeIds, myScanUnsavedCreatureIds, myScannedcreatures));
 			}
 			return actions;
 		}

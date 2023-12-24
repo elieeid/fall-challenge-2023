@@ -1,6 +1,5 @@
 package fr.eeid.codingame.model;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,8 +49,8 @@ public class Drone {
 			if (droneX > 5000) {
 				leftRight = StartLeftRight.RIGHT;
 			}
-			strategy = DroneStrategy.TYPE0;
-			for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE0)) {
+			strategy = DroneStrategy.TYPE2;
+			for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE2)) {
 				if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
 					return;
 				}
@@ -62,7 +61,7 @@ public class Drone {
 					return;
 				}
 			}
-			strategy = DroneStrategy.TYPE2;
+			strategy = DroneStrategy.TYPE0;
 		}
 	}
 
@@ -70,12 +69,15 @@ public class Drone {
 		return id;
 	}
 
-	public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Map<Integer, Creature> myScannedcreatures) {
+	public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
 		if (strategy == DroneStrategy.SURFACE) {
 			return "MOVE " + droneX + " 500 0";
 		}
 		List<Integer> unscannedCreatureTypeIds = creatureTypeIds.get(strategy).stream()
-				.filter(creatureType0Id -> !scanUnsavedCreatureIds.contains(creatureType0Id) && !myScannedcreatures.containsKey(creatureType0Id))
+				.filter(creatureType0Id -> 
+					!myScanUnsavedCreatureIds.contains(creatureType0Id)
+					&& !myScannedcreatures.containsKey(creatureType0Id)
+					)
 				.toList();
 		if (unscannedCreatureTypeIds.isEmpty()) {
 			strategy = DroneStrategy.SURFACE;

@@ -2,8 +2,10 @@ package fr.eeid.codingame.model;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import fr.eeid.codingame.io.InputTracer;
 
@@ -24,6 +26,7 @@ public class Board {
 	
 	private Map<Integer, Creature> myScannedcreatures = new HashMap<>();
 	private Map<Integer, Creature> myUnscannedcreatures = new HashMap<>();
+	private Set<Integer> myScanUnsavedCreatureIds = new HashSet<>();
 	
 	private Map<Integer, Creature> foeScannedcreatures = new HashMap<>();
 	private Map<Integer, Creature> foeUnscannedcreatures = new HashMap<>();
@@ -124,14 +127,17 @@ public class Board {
 		}
 		
 		int droneScanCount = input.nextLineAsSingleInt();
+		myScanUnsavedCreatureIds = new HashSet<>();
         for (int i = 0; i < droneScanCount; i++) {
         	int[] line = input.nextLineAsInts();
             int droneId = line[0];
             Drone drone = myDrones.get(droneId);
+            int creatureId = line[1];
             if (drone == null) {
             	drone = foeDrones.get(droneId);
+            } else {
+            	myScanUnsavedCreatureIds.add(creatureId);
             }
-            int creatureId = line[1];
             drone.addScanUnsaved(creatureId);
         }
 		
@@ -167,7 +173,7 @@ public class Board {
 		List<String> actions = new ArrayList<>();
 		for (Drone myDrone : myDrones.values()) {
 			myDrone.updateStrategy(creatureTypeIds, myScannedcreatures);
-			actions.add(myDrone.getAction(creatureTypeIds, myScannedcreatures));
+			actions.add(myDrone.getAction(creatureTypeIds, myScanUnsavedCreatureIds, myScannedcreatures));
 		}
 		return actions;
 	}
