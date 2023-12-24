@@ -1,7 +1,11 @@
 package fr.eeid.codingame.model;
 
-import java.awt.geom.Point2D;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class Drone {
 
@@ -10,6 +14,11 @@ public class Drone {
 	private int droneY;
 	private int emergency;
 	private int battery;
+	
+	private DroneStrategy strategy = DroneStrategy.SURFACE;
+	private StartLeftRight leftRight = StartLeftRight.LEFT;
+	private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
+	private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
 	
 	public Drone(int id, int droneX, int droneY, int emergency, int battery) {
 		this.id = id;
@@ -24,29 +33,81 @@ public class Drone {
 		this.droneY = droneY;
 		this.emergency = emergency;
 		this.battery = battery;
+		scanUnsavedCreatureIds = new HashSet<>();
+	}
+	
+	public void addScanUnsaved(int creatureId) {
+		scanUnsavedCreatureIds.add(creatureId);
+	}
+	
+	public void updateRadar(int creatureId, String radar) {
+		creaturesRadarPositions.put(creatureId, radar);
+	}
+	
+	public void updateStrategy(Map<DroneStrategy, List<Integer>> creatureTypeIds, Map<Integer, Creature> myScannedcreaturescreatureTypeIds) {
+		if (strategy == DroneStrategy.SURFACE && scanUnsavedCreatureIds.isEmpty()) {
+			leftRight = StartLeftRight.LEFT;
+			if (droneX > 5000) {
+				leftRight = StartLeftRight.RIGHT;
+			}
+			strategy = DroneStrategy.TYPE0;
+			for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE0)) {
+				if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
+					return;
+				}
+			}
+			strategy = DroneStrategy.TYPE1;
+			for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE1)) {
+				if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
+					return;
+				}
+			}
+			strategy = DroneStrategy.TYPE2;
+		}
 	}
 
 	public int getId() {
 		return id;
 	}
 
-	public Creature getClosest(Collection<Creature> creatures) {
-		Creature closestOne = null;
-		double closestDistance = 0d;
-		for (Creature creature : creatures) {
-			if (closestOne == null) {
-				closestOne = creature;
-				closestDistance = Point2D.distance(droneX, droneY, creature.getX(), creature.getY());
-				continue;
-			}
-			double distance = Point2D.distance(droneX, droneY, creature.getX(), creature.getY());
-			if (distance < closestDistance) {
-				closestOne = creature;
-				closestDistance = distance;
-			}
-			
+	public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Map<Integer, Creature> myScannedcreatures) {
+		if (strategy == DroneStrategy.SURFACE) {
+			return "MOVE " + droneX + " 500 0";
 		}
-		return closestOne;
+		List<Integer> unscannedCreatureTypeIds = creatureTypeIds.get(strategy).stream()
+				.filter(creatureType0Id -> !scanUnsavedCreatureIds.contains(creatureType0Id) && !myScannedcreatures.containsKey(creatureType0Id))
+				.toList();
+		if (unscannedCreatureTypeIds.isEmpty()) {
+			strategy = DroneStrategy.SURFACE;
+			return "MOVE " + droneX + " 500 0";
+		}
+		
+		int moveY = strategy.getY(droneY);
+		int moveX = moveX(moveY, unscannedCreatureTypeIds);
+		int light = droneY >= (moveY - 2000) ? 1 : 0;
+		return "MOVE " + moveX + " " + moveY + " " + light;
+	}
+
+	private int moveX(int moveY, List<Integer> unscannedCreatureType0Ids) {
+		if (droneY <= (moveY - 2000)) {
+			return droneX;
+		}
+		if (leftRight == StartLeftRight.LEFT) {
+			for (Integer unscannedCreatureType0Id : unscannedCreatureType0Ids) {
+				String radarPosition = creaturesRadarPositions.get(unscannedCreatureType0Id);
+				if ("TL".equals(radarPosition) || "BL".equals(radarPosition)) {
+					return 0;
+				}
+			}
+			return 9999;
+		}
+		for (Integer unscannedCreatureType0Id : unscannedCreatureType0Ids) {
+			String radarPosition = creaturesRadarPositions.get(unscannedCreatureType0Id);
+			if ("TR".equals(radarPosition) || "BR".equals(radarPosition)) {
+				return 9999;
+			}
+		}
+		return 0;
 	}
 	
 }

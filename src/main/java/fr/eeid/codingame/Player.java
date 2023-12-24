@@ -17,7 +17,9 @@ class Player {
 			// Parse current state of the game
 			board.update(input);
 			
-			System.out.println(board.getAction());
+			for (String action : board.getActions()) {
+				System.out.println(action);
+			}
 		}
 	}
 
