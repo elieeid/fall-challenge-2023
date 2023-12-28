@@ -6,10 +6,9 @@ public class Creature {
 	private final int color;
 	private final int type;
 	
-	private int x;
-	private int y;
-	private int vx;
-	private int vy;
+	private Vector pos;
+	private Vector speed;
+	private boolean visible = false;
 	
 	public Creature(int id, int color, int type) {
 		this.id = id;
@@ -18,22 +17,29 @@ public class Creature {
 	}
 
 	public void updatePosition(int x, int y, int vx, int vy) {
-		this.x = x;
-		this.y = y;
-		this.vx = vx;
-		this.vy = vy;
+		this.pos = new Vector(x, y);
+		this.speed = new Vector(vx, vy);
+		visible = true;
 	}
 
 	public int getId() {
 		return id;
 	}
 
-	public int getX() {
-		return x;
+	public Vector getPos() {
+		return pos;
 	}
 
-	public int getY() {
-		return y;
+	public Vector getSpeed() {
+		return speed;
+	}
+	
+	public boolean isVisible() {
+		return visible;
+	}
+
+	public void setInvisible() {
+		visible = false;
 	}
 
 }

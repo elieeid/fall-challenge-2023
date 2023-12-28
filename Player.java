@@ -1,9 +1,7 @@
 import java.util.List;
 import java.util.Map;
-import java.util.Collection;
 import java.util.Arrays;
 import java.util.Scanner;
-import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -41,12 +39,179 @@ class Player {
 	        return String.join("\\n", readLines);
 	    }
 	}
+	private static class Vector {
+	    public static final Vector ZERO = new Vector(0, 0);
+	    private final double x, y;
+	    @Override
+	    public int hashCode() {
+	        final int prime = 31;
+	        int result = 1;
+	        long temp;
+	        temp = Double.doubleToLongBits(x);
+	        result = prime * result + (int) (temp ^ (temp >>> 32));
+	        temp = Double.doubleToLongBits(y);
+	        result = prime * result + (int) (temp ^ (temp >>> 32));
+	        return result;
+	    }
+	    @Override
+	    public boolean equals(Object obj) {
+	        if (this == obj) return true;
+	        if (obj == null) return false;
+	        if (getClass() != obj.getClass()) return false;
+	        Vector other = (Vector) obj;
+	        if (Double.doubleToLongBits(x) != Double.doubleToLongBits(other.x)) return false;
+	        if (Double.doubleToLongBits(y) != Double.doubleToLongBits(other.y)) return false;
+	        return true;
+	    }
+	    public Vector(double x, double y) {
+	        this.x = x;
+	        this.y = y;
+	    }
+	    public Vector(Vector a, Vector b) {
+	        this.x = b.x - a.x;
+	        this.y = b.y - a.y;
+	    }
+	    public Vector(double angle) {
+	        this.x = Math.cos(angle);
+	        this.y = Math.sin(angle);
+	    }
+	    public Vector rotate(double angle) {
+	        double nx = (x * Math.cos(angle)) - (y * Math.sin(angle));
+	        double ny = (x * Math.sin(angle)) + (y * Math.cos(angle));
+	        return new Vector(nx, ny);
+	    };
+	    public boolean equals(Vector v) {
+	        return v.getX() == x && v.getY() == y;
+	    }
+	    public Vector round() {
+	        return new Vector((int) Math.round(this.x), (int) Math.round(this.y));
+	    }
+	    public Vector truncate() {
+	        return new Vector((int) this.x, (int) this.y);
+	    }
+	    public double getX() {
+	        return x;
+	    }
+	    public double getY() {
+	        return y;
+	    }
+	    public double distance(Vector v) {
+	        return Math.sqrt((v.x - x) * (v.x - x) + (v.y - y) * (v.y - y));
+	    }
+	    public boolean inRange(Vector v, double range) {
+	        return (v.x - x) * (v.x - x) + (v.y - y) * (v.y - y) <= range * range;
+	    }
+	    public Vector add(Vector v) {
+	        return new Vector(x + v.x, y + v.y);
+	    }
+	    public Vector mult(double factor) {
+	        return new Vector(x * factor, y * factor);
+	    }
+	    public Vector sub(Vector v) {
+	        return new Vector(this.x - v.x, this.y - v.y);
+	    }
+	    public double length() {
+	        return Math.sqrt(x * x + y * y);
+	    }
+	    public double lengthSquared() {
+	        return x * x + y * y;
+	    }
+	    public Vector normalize() {
+	        double length = length();
+	        if (length == 0)
+	            return new Vector(0, 0);
+	        return new Vector(x / length, y / length);
+	    }
+	    public double dot(Vector v) {
+	        return x * v.x + y * v.y;
+	    }
+	    public double angle() {
+	        return Math.atan2(y, x);
+	    }
+	    @Override
+	    public String toString() {
+	        return "[" + x + ", " + y + "]";
+	    }
+	    public String toIntString() {
+	        return (int) x + " " + (int) y;
+	    }
+	    public Vector project(Vector force) {
+	        Vector normalize = this.normalize();
+	        return normalize.mult(normalize.dot(force));
+	    }
+	    public final Vector cross(double s) {
+	        return new Vector(-s * y, s * x);
+	    }
+	    public Vector hsymmetric(double center) {
+	        return new Vector(2 * center - this.x, this.y);
+	    }
+	    public Vector vsymmetric(double center) {
+	        return new Vector(this.x, 2 * center - this.y);
+	    }
+	    public Vector vsymmetric() {
+	        return new Vector(this.x, -this.y);
+	    }
+	    public Vector hsymmetric() {
+	        return new Vector(-this.x, this.y);
+	    }
+	    public Vector symmetric() {
+	        return symmetric(new Vector(0, 0));
+	    }
+	    public Vector symmetric(Vector center) {
+	        return new Vector(center.x * 2 - this.x, center.y * 2 - this.y);
+	    }
+	    public boolean withinBounds(double minx, double miny, double maxx, double maxy) {
+	        return x >= minx && x < maxx && y >= miny && y < maxy;
+	    }
+	    public boolean isZero() {
+	        return x == 0 && y == 0;
+	    }
+	    public Vector symmetricTruncate(Vector origin) {
+	        return sub(origin).truncate().add(origin);
+	    }
+	    public Vector symmetricTruncate() {
+	        return new Vector(
+	            (x < Board.CENTER.x) ? Math.floor(x) : Math.ceil(x),
+	            (y < Board.CENTER.y) ? Math.floor(y) : Math.ceil(y)
+	        );
+	    }
+	    public double euclideanTo(double x, double y) {
+	        return Math.sqrt(sqrEuclideanTo(x, y));
+	    }
+	    public double sqrEuclideanTo(double x, double y) {
+	        return Math.pow(x - this.x, 2) + Math.pow(y - this.y, 2);
+	    }
+	    public double sqrEuclideanTo(Vector other) {
+	        return sqrEuclideanTo(other.x, other.y);
+	    }
+	    public Vector add(double x, double y) {
+	        return new Vector(this.x + x, this.y + y);
+	    }
+	    public double manhattanTo(Vector other) {
+	        return manhattanTo(other.x, other.y);
+	    }
+	    public double chebyshevTo(double x, double y) {
+	        return Math.max(Math.abs(x - this.x), Math.abs(y - this.y));
+	    }
+	    public double manhattanTo(double x, double y) {
+	        return Math.abs(x - this.x) + Math.abs(y - this.y);
+	    }
+	    public double euclideanTo(Vector pos) {
+	        return euclideanTo(pos.x, pos.y);
+	    }
+	    public Vector epsilonRound() {
+	        return new Vector(
+	            Math.round(x * 10000000.0) / 10000000.0,
+	            Math.round(y * 10000000.0) / 10000000.0
+	        );
+	    }
+	}
 	private static enum StartLeftRight {
 		LEFT, RIGHT;
 	}
 	private static enum DroneStrategy {
 		TYPE0, TYPE1, TYPE2, SURFACE;
-		public int getY(int y) {
+		public double getY(double y) {
 			if (this == TYPE0) {
 				return 4500;
 			} else if (this == TYPE1) {
@@ -56,11 +221,18 @@ class Player {
 			}
 			return y;
 		}
+		public int getInteger() {
+			if (this == TYPE2) {
+				return 2;
+			} else if (this == TYPE1) {
+				return 1;
+			}
+			return 0;
+		}
 	}
 	private static class Drone {
 		private final int id;
-		private int droneX;
-		private int droneY;
+		private Vector pos;
 		private int emergency;
 		private int battery;
 		private DroneStrategy strategy = DroneStrategy.SURFACE;
@@ -69,14 +241,12 @@ class Player {
 		private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
 		public Drone(int id, int droneX, int droneY, int emergency, int battery) {
 			this.id = id;
-			this.droneX = droneX;
-			this.droneY = droneY;
+			this.pos = new Vector(droneX, droneY);
 			this.emergency = emergency;
 			this.battery = battery;
 		}
 		public void update(int droneX, int droneY, int emergency, int battery) {
-			this.droneX = droneX;
-			this.droneY = droneY;
+			this.pos = new Vector(droneX, droneY);
 			this.emergency = emergency;
 			this.battery = battery;
 			scanUnsavedCreatureIds = new HashSet<>();
@@ -87,21 +257,21 @@ class Player {
 		public void updateRadar(int creatureId, String radar) {
 			creaturesRadarPositions.put(creatureId, radar);
 		}
-		public void updateStrategy(Map<DroneStrategy, List<Integer>> creatureTypeIds, Map<Integer, Creature> myScannedcreaturescreatureTypeIds) {
+		public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreaturescreatureTypeIds) {
 			if (strategy == DroneStrategy.SURFACE && scanUnsavedCreatureIds.isEmpty()) {
 				leftRight = StartLeftRight.LEFT;
-				if (droneX > 5000) {
+				if (pos.getX() > 5000) {
 					leftRight = StartLeftRight.RIGHT;
 				}
 				strategy = DroneStrategy.TYPE2;
-				for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE2)) {
-					if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
+				for (Creature creature : creatureTypes.get(2)) {
+					if (myScannedcreaturescreatureTypeIds.get(creature.getId()) == null) {
 						return;
 					}
 				}
 				strategy = DroneStrategy.TYPE1;
-				for (Integer creatureId : creatureTypeIds.get(DroneStrategy.TYPE1)) {
-					if (myScannedcreaturescreatureTypeIds.get(creatureId) == null) {
+				for (Creature creature : creatureTypes.get(1)) {
+					if (myScannedcreaturescreatureTypeIds.get(creature.getId()) == null) {
 						return;
 					}
 				}
@@ -111,88 +281,179 @@ class Player {
 		public int getId() {
 			return id;
 		}
-		public String getAction(Map<DroneStrategy, List<Integer>> creatureTypeIds, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
-			if (strategy == DroneStrategy.SURFACE) {
-				return "MOVE " + droneX + " 500 0";
+		public String getAction(Map<Integer, List<Creature>> creatureTypes, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
+			if (emergency == 1) {
+				return "WAIT 0";
 			}
-			List<Integer> unscannedCreatureTypeIds = creatureTypeIds.get(strategy).stream()
-					.filter(creatureType0Id -> 
-						!myScanUnsavedCreatureIds.contains(creatureType0Id)
-						&& !myScannedcreatures.containsKey(creatureType0Id)
+			List<Creature> monsters = creatureTypes.get(-1);
+			if (strategy == DroneStrategy.SURFACE) {
+				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, monsters);
+				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
+			}
+			List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
+					.filter(creatureType -> 
+						!myScanUnsavedCreatureIds.contains(creatureType.getId())
+						&& !myScannedcreatures.containsKey(creatureType.getId())
 						)
 					.toList();
-			if (unscannedCreatureTypeIds.isEmpty()) {
+			if (unscannedCreatureTypes.isEmpty()) {
 				strategy = DroneStrategy.SURFACE;
-				return "MOVE " + droneX + " 500 0";
+				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, monsters);
+				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 			}
-			int moveY = strategy.getY(droneY);
-			int moveX = moveX(moveY, unscannedCreatureTypeIds);
-			int light = droneY >= (moveY - 2000) ? 1 : 0;
-			String action = "MOVE " + moveX + " " + moveY + " " + light;
-			action += " id:" + id;
-			for (Entry<Integer, String> entry : creaturesRadarPositions.entrySet()) {
-				action += " creaId:" + entry.getKey() + " position:" + entry.getValue();
-			}
+			double moveY = strategy.getY(pos.getY());
+			double moveX = moveX(moveY, unscannedCreatureTypes);
+			int light = pos.getY() >= (moveY - 2000) ? 1 : 0;
+			Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, monsters);
+			String action = "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " " + light;
 			return action;
 		}
-		private int moveX(int moveY, List<Integer> unscannedCreatureType0Ids) {
-			if (droneY <= (moveY - 2000)) {
-				return droneX;
+		private Vector getMoveWithoutCollision(double moveX, double moveY, List<Creature> monsters) {
+			Vector speed = getSpeed(moveY, moveX);
+			List<Creature> monsterCollisions = monsters.stream()
+					.filter(monster -> monster.isVisible())
+					.filter(monster -> isCollision(speed, monster))
+					.toList();
+			Vector newSpeed1 = new Vector(speed.getX(), speed.getY());
+			while (!monsterCollisions.isEmpty()) {
+				double moveX1 = newSpeed1.getX() * Math.cos(0.1) - newSpeed1.getY() * Math.sin(0.1);
+				double moveY1 = newSpeed1.getX() * Math.sin(0.1) + newSpeed1.getY() * Math.cos(0.1);
+				newSpeed1 = new Vector(moveX1, moveY1);
+				Vector speedFinal = new Vector(moveX1, moveY1);
+				monsterCollisions = monsters.stream()
+						.filter(monster -> monster.isVisible())
+						.filter(monster -> isCollision(speedFinal, monster))
+						.toList();
+			}
+			Vector newPosition1 = new Vector(pos.getX() + newSpeed1.getX(), pos.getY() + newSpeed1.getY());
+			Vector newSpeed2 = new Vector(speed.getX(), speed.getY());
+			monsterCollisions = monsters.stream()
+					.filter(monster -> monster.isVisible())
+					.filter(monster -> isCollision(speed, monster))
+					.toList();
+			while (!monsterCollisions.isEmpty()) {
+				double moveX2 = newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1);
+				double moveY2 = newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1);
+				newSpeed2 = new Vector(moveX2, moveY2);
+				Vector speedFinal = new Vector(moveX2, moveY2);
+				monsterCollisions = monsters.stream()
+						.filter(monster -> monster.isVisible())
+						.filter(monster -> isCollision(speedFinal, monster))
+						.toList();
+			}
+			Vector newPosition2 = new Vector(pos.getX() + newSpeed2.getX(), pos.getY() + newSpeed2.getY());
+			return newPosition2;
+		}
+		private Vector getSpeed(double moveY, double moveX) {
+			Vector move = new Vector(moveX, moveY);
+			Vector moveVec = new Vector(pos, move);
+	        if (moveVec.length() > 600) {
+	            moveVec = moveVec.normalize().mult(600);
+	        }
+	        Vector speed = moveVec.round();
+			return speed;
+		}
+		private double moveX(double moveY, List<Creature> unscannedCreatureTypes) {
+			if (pos.getY() <= (moveY - 2000)) {
+				return pos.getX();
 			}
 			if (leftRight == StartLeftRight.LEFT) {
-				for (Integer unscannedCreatureType0Id : unscannedCreatureType0Ids) {
-					String radarPosition = creaturesRadarPositions.get(unscannedCreatureType0Id);
+				for (Creature unscannedCreatureType : unscannedCreatureTypes) {
+					String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
 					if ("TL".equals(radarPosition) || "BL".equals(radarPosition)) {
 						return 0;
 					}
 				}
 				return 9999;
 			}
-			for (Integer unscannedCreatureType0Id : unscannedCreatureType0Ids) {
-				String radarPosition = creaturesRadarPositions.get(unscannedCreatureType0Id);
+			for (Creature unscannedCreatureType : unscannedCreatureTypes) {
+				String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
 				if ("TR".equals(radarPosition) || "BR".equals(radarPosition)) {
 					return 9999;
 				}
 			}
 			return 0;
 		}
+		boolean isCollision(Vector speed, Creature ugly) {
+	        if (ugly.getPos().inRange(pos, 500)) {
+	            return true;
+	        }
+	        if (speed.isZero() && ugly.getSpeed().isZero()) {
+	            return false;
+	        }
+	        double x = ugly.getPos().getX();
+	        double y = ugly.getPos().getY();
+	        double ux = pos.getX();
+	        double uy = pos.getY();
+	        double x2 = x - ux;
+	        double y2 = y - uy;
+	        double r2 = 500;
+	        double vx2 = ugly.getSpeed().getX() - speed.getX();
+	        double vy2 = ugly.getSpeed().getY() - speed.getY();
+	        double a = vx2 * vx2 + vy2 * vy2;
+	        if (a <= 0.0) {
+	            return false;
+	        }
+	        double b = 2.0 * (x2 * vx2 + y2 * vy2);
+	        double c = x2 * x2 + y2 * y2 - r2 * r2;
+	        double delta = b * b - 4.0 * a * c;
+	        if (delta < 0.0) {
+	            return false;
+	        }
+	        double t = (-b - Math.sqrt(delta)) / (2.0 * a);
+	        if (t <= 0.0) {
+	            return false;
+	        }
+	        if (t > 1.0) {
+	            return false;
+	        }
+	        return true;
+	    }
 	}
 	private static class Creature {
 		private final int id;
 		private final int color;
 		private final int type;
-		private int x;
-		private int y;
-		private int vx;
-		private int vy;
+		private Vector pos;
+		private Vector speed;
+		private boolean visible = false;
 		public Creature(int id, int color, int type) {
 			this.id = id;
 			this.color = color; // (0 à 3)
 			this.type = type; // (0 à 2)
 		}
 		public void updatePosition(int x, int y, int vx, int vy) {
-			this.x = x;
-			this.y = y;
-			this.vx = vx;
-			this.vy = vy;
+			this.pos = new Vector(x, y);
+			this.speed = new Vector(vx, vy);
+			visible = true;
 		}
 		public int getId() {
 			return id;
 		}
-		public int getX() {
-			return x;
+		public Vector getPos() {
+			return pos;
 		}
-		public int getY() {
-			return y;
+		public Vector getSpeed() {
+			return speed;
+		}
+		public boolean isVisible() {
+			return visible;
+		}
+		public void setInvisible() {
+			visible = false;
 		}
 	}
 	private static class Board {
+		public static final int WIDTH = 10000;
+	    public static final int HEIGHT = 10000;
+		public static final Vector CENTER = new Vector((WIDTH - 1) / 2.0, (HEIGHT - 1) / 2.0);
 		private final int creatureCount;
 		private final Map<Integer, Creature> creatures = new HashMap<>();
-		private final Map<DroneStrategy, List<Integer>> creatureTypeIds = new HashMap<>();
-		private List<Integer> creatureType0Ids = new ArrayList<>();
-		private List<Integer> creatureType1Ids = new ArrayList<>();
-		private List<Integer> creatureType2Ids = new ArrayList<>();
+		private final Map<Integer, List<Creature>> creatureTypes = new HashMap<>();
+		private List<Creature> creatureType0s = new ArrayList<>();
+		private List<Creature> creatureType1s = new ArrayList<>();
+		private List<Creature> creatureType2s = new ArrayList<>();
+		private List<Creature> monsters = new ArrayList<>();
 		private int myScore;
 		private int foeScore;
 		private Map<Integer, Creature> myScannedcreatures = new HashMap<>();
@@ -216,16 +477,19 @@ class Player {
 				this.myUnscannedcreatures.put(creatureId, creature);
 				this.foeUnscannedcreatures.put(creatureId, creature);
 				if (type == 0) {
-					creatureType0Ids.add(creatureId);
+					creatureType0s.add(creature);
 				} else if (type == 1) {
-					creatureType1Ids.add(creatureId);
+					creatureType1s.add(creature);
+				} else if (type == 2) {
+					creatureType2s.add(creature);
 				} else {
-					creatureType2Ids.add(creatureId);
+					monsters.add(creature);
 				}
 			}
-			creatureTypeIds.put(DroneStrategy.TYPE0, creatureType0Ids);
-			creatureTypeIds.put(DroneStrategy.TYPE1, creatureType1Ids);
-			creatureTypeIds.put(DroneStrategy.TYPE2, creatureType2Ids);
+			creatureTypes.put(0, creatureType0s);
+			creatureTypes.put(1, creatureType1s);
+			creatureTypes.put(2, creatureType2s);
+			creatureTypes.put(-1, monsters);
 		}
 		public void update(InputTracer input) {
 			this.myScore = input.nextLineAsSingleInt();
@@ -301,6 +565,7 @@ class Player {
 	            drone.addScanUnsaved(creatureId);
 	        }
 			int visibleCreatureCount = input.nextLineAsSingleInt();
+			monsters.forEach(monster -> monster.setInvisible());
 	        for (int i = 0; i < visibleCreatureCount; i++) {
 	        	int[] line = input.nextLineAsInts();
 	            int creatureId = line[0];
@@ -327,8 +592,8 @@ class Player {
 		public List<String> getActions() {
 			List<String> actions = new ArrayList<>();
 			for (Drone myDrone : myDrones.values()) {
-				myDrone.updateStrategy(creatureTypeIds, myScannedcreatures);
-				actions.add(myDrone.getAction(creatureTypeIds, myScanUnsavedCreatureIds, myScannedcreatures));
+				myDrone.updateStrategy(creatureTypes, myScannedcreatures);
+				actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 			}
 			return actions;
 		}

@@ -11,13 +11,18 @@ import fr.eeid.codingame.io.InputTracer;
 
 public class Board {
 	
+	public static final int WIDTH = 10000;
+    public static final int HEIGHT = 10000;
+	public static final Vector CENTER = new Vector((WIDTH - 1) / 2.0, (HEIGHT - 1) / 2.0);
+	
 	// Given at startup
 	private final int creatureCount;
 	private final Map<Integer, Creature> creatures = new HashMap<>();
-	private final Map<DroneStrategy, List<Integer>> creatureTypeIds = new HashMap<>();
-	private List<Integer> creatureType0Ids = new ArrayList<>();
-	private List<Integer> creatureType1Ids = new ArrayList<>();
-	private List<Integer> creatureType2Ids = new ArrayList<>();
+	private final Map<Integer, List<Creature>> creatureTypes = new HashMap<>();
+	private List<Creature> creatureType0s = new ArrayList<>();
+	private List<Creature> creatureType1s = new ArrayList<>();
+	private List<Creature> creatureType2s = new ArrayList<>();
+	private List<Creature> monsters = new ArrayList<>();
 
 	// Updated each turn
 
@@ -49,16 +54,19 @@ public class Board {
 			this.myUnscannedcreatures.put(creatureId, creature);
 			this.foeUnscannedcreatures.put(creatureId, creature);
 			if (type == 0) {
-				creatureType0Ids.add(creatureId);
+				creatureType0s.add(creature);
 			} else if (type == 1) {
-				creatureType1Ids.add(creatureId);
+				creatureType1s.add(creature);
+			} else if (type == 2) {
+				creatureType2s.add(creature);
 			} else {
-				creatureType2Ids.add(creatureId);
+				monsters.add(creature);
 			}
 		}
-		creatureTypeIds.put(DroneStrategy.TYPE0, creatureType0Ids);
-		creatureTypeIds.put(DroneStrategy.TYPE1, creatureType1Ids);
-		creatureTypeIds.put(DroneStrategy.TYPE2, creatureType2Ids);
+		creatureTypes.put(0, creatureType0s);
+		creatureTypes.put(1, creatureType1s);
+		creatureTypes.put(2, creatureType2s);
+		creatureTypes.put(-1, monsters);
 	}
 
 	public void update(InputTracer input) {
@@ -142,6 +150,7 @@ public class Board {
         }
 		
 		int visibleCreatureCount = input.nextLineAsSingleInt();
+		monsters.forEach(monster -> monster.setInvisible());
         for (int i = 0; i < visibleCreatureCount; i++) {
         	int[] line = input.nextLineAsInts();
         	
@@ -172,8 +181,8 @@ public class Board {
 	public List<String> getActions() {
 		List<String> actions = new ArrayList<>();
 		for (Drone myDrone : myDrones.values()) {
-			myDrone.updateStrategy(creatureTypeIds, myScannedcreatures);
-			actions.add(myDrone.getAction(creatureTypeIds, myScanUnsavedCreatureIds, myScannedcreatures));
+			myDrone.updateStrategy(creatureTypes, myScannedcreatures);
+			actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 		}
 		return actions;
 	}
