@@ -135,6 +135,11 @@ public class Drone {
 		}
 		
 		Vector newPosition2 = new Vector(pos.getX() + newSpeed2.getX(), pos.getY() + newSpeed2.getY());
+		
+		Vector move = new Vector(moveX, moveY);
+		if (move.distance(newPosition1) < move.distance(newPosition2)) {
+			return newPosition1;
+		}
 		return newPosition2;
 	}
 

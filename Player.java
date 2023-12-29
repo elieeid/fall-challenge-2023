@@ -340,6 +340,10 @@ class Player {
 						.toList();
 			}
 			Vector newPosition2 = new Vector(pos.getX() + newSpeed2.getX(), pos.getY() + newSpeed2.getY());
+			Vector move = new Vector(moveX, moveY);
+			if (move.distance(newPosition1) < move.distance(newPosition2)) {
+				return newPosition1;
+			}
 			return newPosition2;
 		}
 		private Vector getSpeed(double moveX, double moveY) {
@@ -448,9 +452,6 @@ class Player {
 		private final int creatureCount;
 		private final Map<Integer, Creature> creatures = new HashMap<>();
 		private final Map<Integer, List<Creature>> creatureTypes = new HashMap<>();
-		private List<Creature> creatureType0s = new ArrayList<>();
-		private List<Creature> creatureType1s = new ArrayList<>();
-		private List<Creature> creatureType2s = new ArrayList<>();
 		private List<Creature> monsters = new ArrayList<>();
 		private int myScore;
 		private int foeScore;
@@ -463,6 +464,9 @@ class Player {
 		private Map<Integer, Drone> foeDrones = new HashMap<>();
 		public Board(InputTracer input) {
 			this.creatureCount = input.nextLineAsSingleInt();
+			List<Creature> creatureType0s = new ArrayList<>();
+			List<Creature> creatureType1s = new ArrayList<>();
+			List<Creature> creatureType2s = new ArrayList<>();
 			for (int i = 0; i < creatureCount; i++) {
 				int[] line = input.nextLineAsInts();
 				int creatureId = line[0];
@@ -575,6 +579,7 @@ class Player {
 	            creature.updatePosition(creatureX, creatureY, creatureVx, creatureVy);
 	        }
 	        int radarBlipCount = input.nextLineAsSingleInt();
+	        Set<Integer> creaturesStillPresent = new HashSet<>();
 	        for (int i = 0; i < radarBlipCount; i++) {
 	        	String[] line = input.nextLine();
 	            int droneId = Integer.parseInt(line[0]);
@@ -583,9 +588,22 @@ class Player {
 	            	drone = foeDrones.get(droneId);
 	            }
 	            int creatureId = Integer.parseInt(line[1]);
+	            creaturesStillPresent.add(creatureId);
 	            String radar = line[2];
 	            drone.updateRadar(creatureId, radar);
 	        }
+	        List<Creature> type0Creatures = creatureTypes.get(0).stream()
+	        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+	        		.toList();
+	        creatureTypes.put(0, type0Creatures);
+	        List<Creature> type1Creatures = creatureTypes.get(1).stream()
+	        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+	        		.toList();
+	        creatureTypes.put(1, type1Creatures);
+	        List<Creature> type2Creatures = creatureTypes.get(2).stream()
+	        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+	        		.toList();
+	        creatureTypes.put(2, type2Creatures);
 		}
 		public List<String> getActions() {
 			List<String> actions = new ArrayList<>();

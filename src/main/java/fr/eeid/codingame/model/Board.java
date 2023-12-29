@@ -19,9 +19,6 @@ public class Board {
 	private final int creatureCount;
 	private final Map<Integer, Creature> creatures = new HashMap<>();
 	private final Map<Integer, List<Creature>> creatureTypes = new HashMap<>();
-	private List<Creature> creatureType0s = new ArrayList<>();
-	private List<Creature> creatureType1s = new ArrayList<>();
-	private List<Creature> creatureType2s = new ArrayList<>();
 	private List<Creature> monsters = new ArrayList<>();
 
 	// Updated each turn
@@ -42,6 +39,9 @@ public class Board {
 
 	public Board(InputTracer input) {
 		this.creatureCount = input.nextLineAsSingleInt();
+		List<Creature> creatureType0s = new ArrayList<>();
+		List<Creature> creatureType1s = new ArrayList<>();
+		List<Creature> creatureType2s = new ArrayList<>();
 		for (int i = 0; i < creatureCount; i++) {
 			int[] line = input.nextLineAsInts();
 			int creatureId = line[0];
@@ -165,6 +165,7 @@ public class Board {
         }
         
         int radarBlipCount = input.nextLineAsSingleInt();
+        Set<Integer> creaturesStillPresent = new HashSet<>();
         for (int i = 0; i < radarBlipCount; i++) {
         	String[] line = input.nextLine();
             int droneId = Integer.parseInt(line[0]);
@@ -173,9 +174,22 @@ public class Board {
             	drone = foeDrones.get(droneId);
             }
             int creatureId = Integer.parseInt(line[1]);
+            creaturesStillPresent.add(creatureId);
             String radar = line[2];
             drone.updateRadar(creatureId, radar);
         }
+        List<Creature> type0Creatures = creatureTypes.get(0).stream()
+        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+        		.toList();
+        creatureTypes.put(0, type0Creatures);
+        List<Creature> type1Creatures = creatureTypes.get(1).stream()
+        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+        		.toList();
+        creatureTypes.put(1, type1Creatures);
+        List<Creature> type2Creatures = creatureTypes.get(2).stream()
+        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))
+        		.toList();
+        creatureTypes.put(2, type2Creatures);
 	}
 
 	public List<String> getActions() {
