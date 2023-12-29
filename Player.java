@@ -2,7 +2,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 import java.util.Scanner;
-import java.util.stream.Collectors;
 import java.util.HashSet;
 import java.util.ArrayList;
 import java.util.Set;
@@ -257,21 +256,21 @@ class Player {
 		public void updateRadar(int creatureId, String radar) {
 			creaturesRadarPositions.put(creatureId, radar);
 		}
-		public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreaturescreatureTypeIds) {
-			if (strategy == DroneStrategy.SURFACE && scanUnsavedCreatureIds.isEmpty()) {
+		public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreatures, Set<Integer> myScanUnsavedCreatureIds) {
+			if (strategy == DroneStrategy.SURFACE && emergency == 0 && scanUnsavedCreatureIds.isEmpty()) {
 				leftRight = StartLeftRight.LEFT;
 				if (pos.getX() > 5000) {
 					leftRight = StartLeftRight.RIGHT;
 				}
 				strategy = DroneStrategy.TYPE2;
 				for (Creature creature : creatureTypes.get(2)) {
-					if (myScannedcreaturescreatureTypeIds.get(creature.getId()) == null) {
+					if (myScannedcreatures.get(creature.getId()) == null && !myScanUnsavedCreatureIds.contains(creature.getId())) {
 						return;
 					}
 				}
 				strategy = DroneStrategy.TYPE1;
 				for (Creature creature : creatureTypes.get(1)) {
-					if (myScannedcreaturescreatureTypeIds.get(creature.getId()) == null) {
+					if (myScannedcreatures.get(creature.getId()) == null && !myScanUnsavedCreatureIds.contains(creature.getId())) {
 						return;
 					}
 				}
@@ -283,11 +282,14 @@ class Player {
 		}
 		public String getAction(Map<Integer, List<Creature>> creatureTypes, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
 			if (emergency == 1) {
+				strategy = DroneStrategy.SURFACE;
 				return "WAIT 0";
 			}
-			List<Creature> monsters = creatureTypes.get(-1);
+			List<Creature> visibleMonsters = creatureTypes.get(-1).stream()
+					.filter(monster -> monster.isVisible())
+					.toList();
 			if (strategy == DroneStrategy.SURFACE) {
-				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, monsters);
+				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 			}
 			List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
@@ -298,53 +300,49 @@ class Player {
 					.toList();
 			if (unscannedCreatureTypes.isEmpty()) {
 				strategy = DroneStrategy.SURFACE;
-				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, monsters);
+				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 			}
 			double moveY = strategy.getY(pos.getY());
 			double moveX = moveX(moveY, unscannedCreatureTypes);
 			int light = pos.getY() >= (moveY - 2000) ? 1 : 0;
-			Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, monsters);
+			Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 			String action = "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " " + light;
 			return action;
 		}
-		private Vector getMoveWithoutCollision(double moveX, double moveY, List<Creature> monsters) {
-			Vector speed = getSpeed(moveY, moveX);
+		public Vector getMoveWithoutCollision(double moveX, double moveY, List<Creature> monsters) {
+			Vector speed = getSpeed(moveX, moveY);
 			List<Creature> monsterCollisions = monsters.stream()
-					.filter(monster -> monster.isVisible())
 					.filter(monster -> isCollision(speed, monster))
 					.toList();
 			Vector newSpeed1 = new Vector(speed.getX(), speed.getY());
 			while (!monsterCollisions.isEmpty()) {
-				double moveX1 = newSpeed1.getX() * Math.cos(0.1) - newSpeed1.getY() * Math.sin(0.1);
-				double moveY1 = newSpeed1.getX() * Math.sin(0.1) + newSpeed1.getY() * Math.cos(0.1);
+				double moveX1 = (int) (newSpeed1.getX() * Math.cos(0.1) - newSpeed1.getY() * Math.sin(0.1));
+				double moveY1 = (int) (newSpeed1.getX() * Math.sin(0.1) + newSpeed1.getY() * Math.cos(0.1));
 				newSpeed1 = new Vector(moveX1, moveY1);
 				Vector speedFinal = new Vector(moveX1, moveY1);
 				monsterCollisions = monsters.stream()
-						.filter(monster -> monster.isVisible())
 						.filter(monster -> isCollision(speedFinal, monster))
 						.toList();
 			}
 			Vector newPosition1 = new Vector(pos.getX() + newSpeed1.getX(), pos.getY() + newSpeed1.getY());
 			Vector newSpeed2 = new Vector(speed.getX(), speed.getY());
 			monsterCollisions = monsters.stream()
-					.filter(monster -> monster.isVisible())
 					.filter(monster -> isCollision(speed, monster))
 					.toList();
 			while (!monsterCollisions.isEmpty()) {
-				double moveX2 = newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1);
-				double moveY2 = newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1);
+				double moveX2 = (int) (newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1));
+				double moveY2 = (int) (newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1));
 				newSpeed2 = new Vector(moveX2, moveY2);
 				Vector speedFinal = new Vector(moveX2, moveY2);
 				monsterCollisions = monsters.stream()
-						.filter(monster -> monster.isVisible())
 						.filter(monster -> isCollision(speedFinal, monster))
 						.toList();
 			}
 			Vector newPosition2 = new Vector(pos.getX() + newSpeed2.getX(), pos.getY() + newSpeed2.getY());
 			return newPosition2;
 		}
-		private Vector getSpeed(double moveY, double moveX) {
+		private Vector getSpeed(double moveX, double moveY) {
 			Vector move = new Vector(moveX, moveY);
 			Vector moveVec = new Vector(pos, move);
 	        if (moveVec.length() > 600) {
@@ -374,7 +372,7 @@ class Player {
 			}
 			return 0;
 		}
-		boolean isCollision(Vector speed, Creature ugly) {
+		public boolean isCollision(Vector speed, Creature ugly) {
 	        if (ugly.getPos().inRange(pos, 500)) {
 	            return true;
 	        }
@@ -592,7 +590,7 @@ class Player {
 		public List<String> getActions() {
 			List<String> actions = new ArrayList<>();
 			for (Drone myDrone : myDrones.values()) {
-				myDrone.updateStrategy(creatureTypes, myScannedcreatures);
+				myDrone.updateStrategy(creatureTypes, myScannedcreatures, myScanUnsavedCreatureIds);
 				actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 			}
 			return actions;

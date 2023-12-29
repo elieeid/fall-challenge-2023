@@ -181,7 +181,7 @@ public class Board {
 	public List<String> getActions() {
 		List<String> actions = new ArrayList<>();
 		for (Drone myDrone : myDrones.values()) {
-			myDrone.updateStrategy(creatureTypes, myScannedcreatures);
+			myDrone.updateStrategy(creatureTypes, myScannedcreatures, myScanUnsavedCreatureIds);
 			actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 		}
 		return actions;
