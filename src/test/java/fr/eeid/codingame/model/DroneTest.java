@@ -9,13 +9,16 @@ public class DroneTest {
 
 	@Test
 	public void test() {
-		Drone drone = new Drone(1, 8503, 5624, 0, 30);
+		Drone drone = new Drone(1, 8433, 2660, 0, 30);
 		// 8562 6221
 		Vector speed = new Vector(59, 597);
 		List<Creature> monsters = new ArrayList<>();
-		Creature monster = new Creature(17, -1, -1);
-		monsters.add(monster);
-		monster.updatePosition(7913, 5523, 532, 91);
-		Vector move = drone.getMoveWithoutCollision(8503, 8500, monsters);
+		Creature monster1 = new Creature(17, -1, -1);
+		Creature monster2 = new Creature(19, -1, -1);
+		monsters.add(monster1);
+		monsters.add(monster2);
+		monster1.updatePosition(7990, 2500, 443, 160);
+		monster2.updatePosition(7990, 2500, 443, 160);
+		Vector move = drone.getMoveWithoutCollision(9999, 4500, monsters);
 	}
 }

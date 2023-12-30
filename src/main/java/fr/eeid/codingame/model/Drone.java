@@ -78,6 +78,15 @@ public class Drone {
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
+		long count = creatureTypes.get(strategy.getInteger()).stream()
+				.filter(creature -> scanUnsavedCreatureIds.contains(creature.getId()))
+				.count();
+		if (count >= 2) {
+			strategy = DroneStrategy.SURFACE;
+			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
+			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0"; 
+		}
+			
 		List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
 				.filter(creatureType -> 
 					!myScanUnsavedCreatureIds.contains(creatureType.getId())
@@ -109,9 +118,15 @@ public class Drone {
 				.toList();
 		
 		Vector newSpeed1 = new Vector(speed.getX(), speed.getY());
+		double angleTotal = 0;
+		double rotationComplete = 6.3; // Un cercle complet a 2 �2π radians (environ 6.283 radians)
 		while (!monsterCollisions.isEmpty()) {
-			double moveX1 = (int) (newSpeed1.getX() * Math.cos(0.1) - newSpeed1.getY() * Math.sin(0.1));
-			double moveY1 = (int) (newSpeed1.getX() * Math.sin(0.1) + newSpeed1.getY() * Math.cos(0.1));
+			long moveX1 = Math.round(newSpeed1.getX() * Math.cos(0.1) - newSpeed1.getY() * Math.sin(0.1));
+			long moveY1 = Math.round(newSpeed1.getX() * Math.sin(0.1) + newSpeed1.getY() * Math.cos(0.1));
+			angleTotal += 0.1;
+			if (angleTotal >= rotationComplete) {
+				return new Vector(pos.getX(), 500);
+			}
 			newSpeed1 = new Vector(moveX1, moveY1);
 			Vector speedFinal = new Vector(moveX1, moveY1);
 			monsterCollisions = monsters.stream()
@@ -125,8 +140,8 @@ public class Drone {
 				.filter(monster -> isCollision(speed, monster))
 				.toList();
 		while (!monsterCollisions.isEmpty()) {
-			double moveX2 = (int) (newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1));
-			double moveY2 = (int) (newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1));
+			long moveX2 = Math.round(newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1));
+			long moveY2 = Math.round(newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1));
 			newSpeed2 = new Vector(moveX2, moveY2);
 			Vector speedFinal = new Vector(moveX2, moveY2);
 			monsterCollisions = monsters.stream()
