@@ -102,7 +102,7 @@ public class Drone {
 		double moveY = strategy.getY(pos.getY());
 		double moveX = moveX(moveY, unscannedCreatureTypes);
 		
-		int light = pos.getY() >= (moveY - 2000) ? 1 : 0;
+		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 ? 1 : 0;
 		
 		Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 		
