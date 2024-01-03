@@ -1,10 +1,12 @@
 package fr.eeid.codingame.model;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import fr.eeid.codingame.io.InputTracer;
@@ -20,8 +22,10 @@ public class Board {
 	private final Map<Integer, Creature> creatures = new HashMap<>();
 	private final Map<Integer, List<Creature>> creatureTypes = new HashMap<>();
 	private List<Creature> monsters = new ArrayList<>();
+	private final Map<Integer, Creature> symetricCreatures = new HashMap<>();
 
 	// Updated each turn
+	private int turn = 0;
 
 	private int myScore;
 	private int foeScore;
@@ -33,7 +37,8 @@ public class Board {
 	private Map<Integer, Creature> foeScannedcreatures = new HashMap<>();
 	private Map<Integer, Creature> foeUnscannedcreatures = new HashMap<>();
 	
-	private Map<Integer, Drone> myDrones = new HashMap<>();
+	private Map<Integer, Drone> myDroneIds = new HashMap<>();
+	private List<Drone> myDrones = new ArrayList<>();
 	
 	private Map<Integer, Drone> foeDrones = new HashMap<>();
 
@@ -63,13 +68,32 @@ public class Board {
 				monsters.add(creature);
 			}
 		}
+		creatureType0s.sort(Comparator.comparing(Creature::getColor));
 		creatureTypes.put(0, creatureType0s);
+		symetricCreatures.put(creatureType0s.get(0).getId(), creatureType0s.get(1));
+		symetricCreatures.put(creatureType0s.get(1).getId(), creatureType0s.get(0));
+		symetricCreatures.put(creatureType0s.get(2).getId(), creatureType0s.get(3));
+		symetricCreatures.put(creatureType0s.get(3).getId(), creatureType0s.get(2));
+		
+		creatureType1s.sort(Comparator.comparing(Creature::getColor));
 		creatureTypes.put(1, creatureType1s);
+		symetricCreatures.put(creatureType1s.get(0).getId(), creatureType1s.get(1));
+		symetricCreatures.put(creatureType1s.get(1).getId(), creatureType1s.get(0));
+		symetricCreatures.put(creatureType1s.get(2).getId(), creatureType1s.get(3));
+		symetricCreatures.put(creatureType1s.get(3).getId(), creatureType1s.get(2));
+		
+		creatureType2s.sort(Comparator.comparing(Creature::getColor));
 		creatureTypes.put(2, creatureType2s);
+		symetricCreatures.put(creatureType2s.get(0).getId(), creatureType2s.get(1));
+		symetricCreatures.put(creatureType2s.get(1).getId(), creatureType2s.get(0));
+		symetricCreatures.put(creatureType2s.get(2).getId(), creatureType2s.get(3));
+		symetricCreatures.put(creatureType2s.get(3).getId(), creatureType2s.get(2));
+		
 		creatureTypes.put(-1, monsters);
 	}
 
 	public void update(InputTracer input) {
+		turn++;
 		this.myScore = input.nextLineAsSingleInt();
 		this.foeScore = input.nextLineAsSingleInt();
 		
@@ -96,7 +120,7 @@ public class Board {
 		for (int i = 0; i < myDroneCount; i++) {
 			int[] line = input.nextLineAsInts();
 			int droneId = line[0];
-			Drone myDrone = myDrones.get(droneId);
+			Drone myDrone = myDroneIds.get(droneId);
 			if (myDrone == null) {
 				myDrone = new Drone(
 						droneId,
@@ -104,7 +128,8 @@ public class Board {
 						line[2],
 						line[3],
 						line[4]);
-				myDrones.put(droneId, myDrone);
+				myDroneIds.put(droneId, myDrone);
+				myDrones.add(myDrone);
 			} else {
 				myDrone.update(line[1],
 						line[2],
@@ -139,7 +164,7 @@ public class Board {
         for (int i = 0; i < droneScanCount; i++) {
         	int[] line = input.nextLineAsInts();
             int droneId = line[0];
-            Drone drone = myDrones.get(droneId);
+            Drone drone = myDroneIds.get(droneId);
             int creatureId = line[1];
             if (drone == null) {
             	drone = foeDrones.get(droneId);
@@ -169,13 +194,16 @@ public class Board {
         for (int i = 0; i < radarBlipCount; i++) {
         	String[] line = input.nextLine();
             int droneId = Integer.parseInt(line[0]);
-            Drone drone = myDrones.get(droneId);
+            Drone drone = myDroneIds.get(droneId);
             if (drone == null) {
             	drone = foeDrones.get(droneId);
             }
             int creatureId = Integer.parseInt(line[1]);
-            creaturesStillPresent.add(creatureId);
             String radar = line[2];
+            creaturesStillPresent.add(creatureId);
+            Creature creature = creatures.get(creatureId);
+            Creature symetricCreature = symetricCreatures.get(creatureId);
+            creature.updatePosMinMax(turn, drone, radar, symetricCreature);
             drone.updateRadar(creatureId, radar);
         }
         List<Creature> type0Creatures = creatureTypes.get(0).stream()
@@ -194,10 +222,18 @@ public class Board {
 
 	public List<String> getActions() {
 		List<String> actions = new ArrayList<>();
-		for (Drone myDrone : myDrones.values()) {
+		for (Creature creature : creatures.values()) {
+			creature.assignMyClosestDrone(myDrones);
+		}
+		for (Drone myDrone : myDroneIds.values()) {
 			myDrone.updateStrategy(creatureTypes, myScannedcreatures, myScanUnsavedCreatureIds);
-			actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
+			String action = myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures);
+			for (Entry<Integer, Creature> entry : symetricCreatures.entrySet()) {
+				action += " " + entry.getKey() + " " + entry.getValue().getId();
+			}
+			actions.add(action);
 		}
 		return actions;
 	}
+
 }

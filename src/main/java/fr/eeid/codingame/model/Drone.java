@@ -12,15 +12,20 @@ public class Drone {
 	private Vector pos;
 	private int emergency;
 	private int battery;
-	
+
 	private DroneStrategy strategy = DroneStrategy.SURFACE;
 	private StartLeftRight leftRight = StartLeftRight.LEFT;
 	private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
 	private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
-	
+
 	public Drone(int id, int droneX, int droneY, int emergency, int battery) {
 		this.id = id;
 		this.pos = new Vector(droneX, droneY);
+		if (droneX < 5000) {
+			leftRight = StartLeftRight.LEFT;
+		} else {
+			leftRight = StartLeftRight.RIGHT;
+		}
 		this.emergency = emergency;
 		this.battery = battery;
 	}
@@ -31,30 +36,29 @@ public class Drone {
 		this.battery = battery;
 		scanUnsavedCreatureIds = new HashSet<>();
 	}
-	
+
 	public void addScanUnsaved(int creatureId) {
 		scanUnsavedCreatureIds.add(creatureId);
 	}
-	
+
 	public void updateRadar(int creatureId, String radar) {
 		creaturesRadarPositions.put(creatureId, radar);
 	}
-	
-	public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreatures, Set<Integer> myScanUnsavedCreatureIds) {
+
+	public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreatures,
+			Set<Integer> myScanUnsavedCreatureIds) {
 		if (strategy == DroneStrategy.SURFACE && emergency == 0 && scanUnsavedCreatureIds.isEmpty()) {
-			leftRight = StartLeftRight.LEFT;
-			if (pos.getX() > 5000) {
-				leftRight = StartLeftRight.RIGHT;
-			}
-			strategy = DroneStrategy.TYPE2;
+			strategy = DroneStrategy.DIVE;
 			for (Creature creature : creatureTypes.get(2)) {
-				if (myScannedcreatures.get(creature.getId()) == null && !myScanUnsavedCreatureIds.contains(creature.getId())) {
+				if (myScannedcreatures.get(creature.getId()) == null
+						&& !myScanUnsavedCreatureIds.contains(creature.getId())) {
 					return;
 				}
 			}
 			strategy = DroneStrategy.TYPE1;
 			for (Creature creature : creatureTypes.get(1)) {
-				if (myScannedcreatures.get(creature.getId()) == null && !myScanUnsavedCreatureIds.contains(creature.getId())) {
+				if (myScannedcreatures.get(creature.getId()) == null
+						&& !myScanUnsavedCreatureIds.contains(creature.getId())) {
 					return;
 				}
 			}
@@ -66,57 +70,57 @@ public class Drone {
 		return id;
 	}
 
-	public String getAction(Map<Integer, List<Creature>> creatureTypes, Set<Integer> myScanUnsavedCreatureIds, Map<Integer, Creature> myScannedcreatures) {
+	public String getAction(Map<Integer, List<Creature>> creatureTypes, Set<Integer> myScanUnsavedCreatureIds,
+			Map<Integer, Creature> myScannedcreatures) {
 		if (emergency == 1) {
 			strategy = DroneStrategy.SURFACE;
 			return "WAIT 0";
 		}
-		List<Creature> visibleMonsters = creatureTypes.get(-1).stream()
-				.filter(monster -> monster.isVisible())
-				.toList();
+		List<Creature> visibleMonsters = creatureTypes.get(-1).stream().filter(monster -> monster.isVisible()).toList();
 		if (strategy == DroneStrategy.SURFACE) {
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
+		
 		long count = creatureTypes.get(strategy.getInteger()).stream()
-				.filter(creature -> scanUnsavedCreatureIds.contains(creature.getId()))
-				.count();
+				.filter(creature -> scanUnsavedCreatureIds.contains(creature.getId())).count();
 		if (count >= 2) {
 			strategy = DroneStrategy.SURFACE;
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
-			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0"; 
+			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
-			
+
 		List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
-				.filter(creatureType -> 
-					!myScanUnsavedCreatureIds.contains(creatureType.getId())
-					&& !myScannedcreatures.containsKey(creatureType.getId())
-					)
+				.filter(creatureType -> !myScanUnsavedCreatureIds.contains(creatureType.getId())
+						&& !myScannedcreatures.containsKey(creatureType.getId()))
 				.toList();
 		if (unscannedCreatureTypes.isEmpty()) {
 			strategy = DroneStrategy.SURFACE;
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
-		
+
 		double moveY = strategy.getY(pos.getY());
 		double moveX = moveX(moveY, unscannedCreatureTypes);
-		
+				
 		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 ? 1 : 0;
-		
+				
 		Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
-		
+				
 		String action = "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " " + light;
+		for (Creature creature : creatureTypes.get(strategy.getInteger())) {
+			Vector approximativePosition = creature.getApproximativePosition();
+			action += " ID:" + creature.getId() + " X:" + approximativePosition.getX() + " Y:"
+					+ approximativePosition.getY();
+		}
 		return action;
 	}
 
 	public Vector getMoveWithoutCollision(double moveX, double moveY, List<Creature> monsters) {
 		Vector speed = getSpeed(moveX, moveY);
-		
-		List<Creature> monsterCollisions = monsters.stream()
-				.filter(monster -> isCollision(speed, monster))
-				.toList();
-		
+
+		List<Creature> monsterCollisions = monsters.stream().filter(monster -> isCollision(speed, monster)).toList();
+
 		Vector newSpeed1 = new Vector(speed.getX(), speed.getY());
 		double angleTotal = 0;
 		double rotationComplete = 6.3; // Un cercle complet a 2 �2π radians (environ 6.283 radians)
@@ -129,28 +133,22 @@ public class Drone {
 			}
 			newSpeed1 = new Vector(moveX1, moveY1);
 			Vector speedFinal = new Vector(moveX1, moveY1);
-			monsterCollisions = monsters.stream()
-					.filter(monster -> isCollision(speedFinal, monster))
-					.toList();
+			monsterCollisions = monsters.stream().filter(monster -> isCollision(speedFinal, monster)).toList();
 		}
 		Vector newPosition1 = new Vector(pos.getX() + newSpeed1.getX(), pos.getY() + newSpeed1.getY());
-		
+
 		Vector newSpeed2 = new Vector(speed.getX(), speed.getY());
-		monsterCollisions = monsters.stream()
-				.filter(monster -> isCollision(speed, monster))
-				.toList();
+		monsterCollisions = monsters.stream().filter(monster -> isCollision(speed, monster)).toList();
 		while (!monsterCollisions.isEmpty()) {
 			long moveX2 = Math.round(newSpeed2.getX() * Math.cos(-0.1) - newSpeed2.getY() * Math.sin(-0.1));
 			long moveY2 = Math.round(newSpeed2.getX() * Math.sin(-0.1) + newSpeed2.getY() * Math.cos(-0.1));
 			newSpeed2 = new Vector(moveX2, moveY2);
 			Vector speedFinal = new Vector(moveX2, moveY2);
-			monsterCollisions = monsters.stream()
-					.filter(monster -> isCollision(speedFinal, monster))
-					.toList();
+			monsterCollisions = monsters.stream().filter(monster -> isCollision(speedFinal, monster)).toList();
 		}
-		
+
 		Vector newPosition2 = new Vector(pos.getX() + newSpeed2.getX(), pos.getY() + newSpeed2.getY());
-		
+
 		Vector move = new Vector(moveX, moveY);
 		if (move.distance(newPosition1) < move.distance(newPosition2)) {
 			return newPosition1;
@@ -161,13 +159,69 @@ public class Drone {
 	private Vector getSpeed(double moveX, double moveY) {
 		Vector move = new Vector(moveX, moveY);
 		Vector moveVec = new Vector(pos, move);
-        if (moveVec.length() > 600) {
-            moveVec = moveVec.normalize().mult(600);
-        }
-        Vector speed = moveVec.round();
+		if (moveVec.length() > 600) {
+			moveVec = moveVec.normalize().mult(600);
+		}
+		Vector speed = moveVec.round();
 		return speed;
 	}
 
+	public boolean isCollision(Vector speed, Creature ugly) {
+		// Check instant collision
+		if (ugly.getPos().inRange(pos, 500)) {
+			return true;
+		}
+
+		// Both units are motionless
+		if (speed.isZero() && ugly.getSpeed().isZero()) {
+			return false;
+		}
+
+		// Change referencial
+		double x = ugly.getPos().getX();
+		double y = ugly.getPos().getY();
+		double ux = pos.getX();
+		double uy = pos.getY();
+
+		double x2 = x - ux;
+		double y2 = y - uy;
+		double r2 = 500;
+		double vx2 = ugly.getSpeed().getX() - speed.getX();
+		double vy2 = ugly.getSpeed().getY() - speed.getY();
+
+		// Resolving: sqrt((x2 + t*vx2)^2 + (y2 + t*vy2)^2) = r2 <=> t^2*(vx2^2 + vy2^2)
+		// + t*2*(x2*vx2 + y2*vy2) + x2^2 + y2^2 - r2^2 = 0
+		// at^2 + bt + c = 0;
+		// a = vx2^2 + vy2^2
+		// b = 2*(x2*vx2 + y2*vy2)
+		// c = x2^2 + y2^2 - radius^2
+
+		double a = vx2 * vx2 + vy2 * vy2;
+
+		if (a <= 0.0) {
+			return false;
+		}
+
+		double b = 2.0 * (x2 * vx2 + y2 * vy2);
+		double c = x2 * x2 + y2 * y2 - r2 * r2;
+		double delta = b * b - 4.0 * a * c;
+
+		if (delta < 0.0) {
+			return false;
+		}
+
+		double t = (-b - Math.sqrt(delta)) / (2.0 * a);
+
+		if (t <= 0.0) {
+			return false;
+		}
+
+		if (t > 1.0) {
+			return false;
+		}
+		return true;
+	}
+	
 	private double moveX(double moveY, List<Creature> unscannedCreatureTypes) {
 		if (pos.getY() <= (moveY - 2000)) {
 			return pos.getX();
@@ -189,60 +243,17 @@ public class Drone {
 		}
 		return 0;
 	}
-	
-	public boolean isCollision(Vector speed, Creature ugly) {
-        // Check instant collision
-        if (ugly.getPos().inRange(pos, 500)) {
-            return true;
-        }
-        
-        // Both units are motionless
-        if (speed.isZero() && ugly.getSpeed().isZero()) {
-            return false;
-        }
 
-        // Change referencial
-        double x = ugly.getPos().getX();
-        double y = ugly.getPos().getY();
-        double ux = pos.getX();
-        double uy = pos.getY();
+	public double getX() {
+		return pos.getX();
+	}
 
-        double x2 = x - ux;
-        double y2 = y - uy;
-        double r2 = 500;
-        double vx2 = ugly.getSpeed().getX() - speed.getX();
-        double vy2 = ugly.getSpeed().getY() - speed.getY();
+	public double getY() {
+		return pos.getY();
+	}
 
-        // Resolving: sqrt((x2 + t*vx2)^2 + (y2 + t*vy2)^2) = r2 <=> t^2*(vx2^2 + vy2^2) + t*2*(x2*vx2 + y2*vy2) + x2^2 + y2^2 - r2^2 = 0
-        // at^2 + bt + c = 0;
-        // a = vx2^2 + vy2^2
-        // b = 2*(x2*vx2 + y2*vy2)
-        // c = x2^2 + y2^2 - radius^2 
+	public Vector getPos() {
+		return pos;
+	}
 
-        double a = vx2 * vx2 + vy2 * vy2;
-
-        if (a <= 0.0) {
-            return false;
-        }
-
-        double b = 2.0 * (x2 * vx2 + y2 * vy2);
-        double c = x2 * x2 + y2 * y2 - r2 * r2;
-        double delta = b * b - 4.0 * a * c;
-
-        if (delta < 0.0) {
-            return false;
-        }
-
-        double t = (-b - Math.sqrt(delta)) / (2.0 * a);
-
-        if (t <= 0.0) {
-            return false;
-        }
-
-        if (t > 1.0) {
-            return false;
-        }
-        return true;
-    }
-	
 }
