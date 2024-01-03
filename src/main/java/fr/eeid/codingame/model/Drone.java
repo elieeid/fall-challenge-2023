@@ -12,6 +12,7 @@ public class Drone {
 	private Vector pos;
 	private int emergency;
 	private int battery;
+	private boolean hasUsedLight;
 
 	private DroneStrategy strategy = DroneStrategy.SURFACE;
 	private StartLeftRight leftRight = StartLeftRight.LEFT;
@@ -33,6 +34,11 @@ public class Drone {
 	public void update(int droneX, int droneY, int emergency, int battery) {
 		this.pos = new Vector(droneX, droneY);
 		this.emergency = emergency;
+		if (this.battery > battery) {
+			hasUsedLight = true;
+		} else {
+			hasUsedLight = false;
+		}
 		this.battery = battery;
 		scanUnsavedCreatureIds = new HashSet<>();
 	}
