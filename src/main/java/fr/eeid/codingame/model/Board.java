@@ -227,11 +227,7 @@ public class Board {
 		}
 		for (Drone myDrone : myDroneIds.values()) {
 			myDrone.updateStrategy(creatureTypes, myScannedcreatures, myScanUnsavedCreatureIds);
-			String action = myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures);
-			for (Entry<Integer, Creature> entry : symetricCreatures.entrySet()) {
-				action += " " + entry.getKey() + " " + entry.getValue().getId();
-			}
-			actions.add(action);
+			actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 		}
 		return actions;
 	}

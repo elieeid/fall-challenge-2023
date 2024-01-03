@@ -236,7 +236,8 @@ class Player {
 		private Vector pos;
 		private int emergency;
 		private int battery;
-		private DroneStrategy strategy = DroneStrategy.SURFACE;
+		private boolean hasUsedLight;
+		private DroneStrategy strategy = DroneStrategy.DIVE;
 		private StartLeftRight leftRight = StartLeftRight.LEFT;
 		private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
 		private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
@@ -254,6 +255,11 @@ class Player {
 		public void update(int droneX, int droneY, int emergency, int battery) {
 			this.pos = new Vector(droneX, droneY);
 			this.emergency = emergency;
+			if (this.battery > battery) {
+				hasUsedLight = true;
+			} else {
+				hasUsedLight = false;
+			}
 			this.battery = battery;
 			scanUnsavedCreatureIds = new HashSet<>();
 		}
@@ -315,7 +321,7 @@ class Player {
 			}
 			double moveY = strategy.getY(pos.getY());
 			double moveX = moveX(moveY, unscannedCreatureTypes);
-			int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 ? 1 : 0;
+			int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 || pos.getY() == 4100 ? 1 : 0;
 			Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 			String action = "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " " + light;
 			for (Creature creature : creatureTypes.get(strategy.getInteger())) {
@@ -766,11 +772,7 @@ class Player {
 			}
 			for (Drone myDrone : myDroneIds.values()) {
 				myDrone.updateStrategy(creatureTypes, myScannedcreatures, myScanUnsavedCreatureIds);
-				String action = myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures);
-				for (Entry<Integer, Creature> entry : symetricCreatures.entrySet()) {
-					action += " " + entry.getKey() + " " + entry.getValue().getId();
-				}
-				actions.add(action);
+				actions.add(myDrone.getAction(creatureTypes, myScanUnsavedCreatureIds, myScannedcreatures));
 			}
 			return actions;
 		}

@@ -14,7 +14,7 @@ public class Drone {
 	private int battery;
 	private boolean hasUsedLight;
 
-	private DroneStrategy strategy = DroneStrategy.SURFACE;
+	private DroneStrategy strategy = DroneStrategy.DIVE;
 	private StartLeftRight leftRight = StartLeftRight.LEFT;
 	private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
 	private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
@@ -109,7 +109,7 @@ public class Drone {
 		double moveY = strategy.getY(pos.getY());
 		double moveX = moveX(moveY, unscannedCreatureTypes);
 				
-		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 ? 1 : 0;
+		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 || pos.getY() == 4100 ? 1 : 0;
 				
 		Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 				
