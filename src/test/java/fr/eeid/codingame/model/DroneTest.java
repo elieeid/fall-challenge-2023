@@ -17,8 +17,8 @@ public class DroneTest {
 		Creature monster2 = new Creature(19, -1, -1);
 		monsters.add(monster1);
 		monsters.add(monster2);
-		monster1.updatePosition(7990, 2500, 443, 160);
-		monster2.updatePosition(7990, 2500, 443, 160);
+		monster1.updatePosition(new Vector(7990, 2500), new Vector(443, 160));
+		monster2.updatePosition(new Vector(7990, 2500), new Vector(443, 160));
 		Vector move = drone.getMoveWithoutCollision(9999, 4500, monsters);
 	}
 }

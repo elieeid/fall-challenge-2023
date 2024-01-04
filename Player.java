@@ -2,7 +2,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Arrays;
 import java.util.Scanner;
-import java.util.Map.Entry;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.ArrayList;
@@ -240,7 +239,6 @@ class Player {
 		private DroneStrategy strategy = DroneStrategy.DIVE;
 		private StartLeftRight leftRight = StartLeftRight.LEFT;
 		private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
-		private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
 		public Drone(int id, int droneX, int droneY, int emergency, int battery) {
 			this.id = id;
 			this.pos = new Vector(droneX, droneY);
@@ -265,9 +263,6 @@ class Player {
 		}
 		public void addScanUnsaved(int creatureId) {
 			scanUnsavedCreatureIds.add(creatureId);
-		}
-		public void updateRadar(int creatureId, String radar) {
-			creaturesRadarPositions.put(creatureId, radar);
 		}
 		public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreatures,
 				Set<Integer> myScanUnsavedCreatureIds) {
@@ -303,9 +298,9 @@ class Player {
 				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 			}
-			long count = creatureTypes.get(strategy.getInteger()).stream()
+			long myStrategyScanUnsavedCreatureIds = creatureTypes.get(strategy.getInteger()).stream()
 					.filter(creature -> scanUnsavedCreatureIds.contains(creature.getId())).count();
-			if (count >= 2) {
+			if (myStrategyScanUnsavedCreatureIds >= 1) {
 				strategy = DroneStrategy.SURFACE;
 				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
@@ -313,15 +308,21 @@ class Player {
 			List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
 					.filter(creatureType -> !myScanUnsavedCreatureIds.contains(creatureType.getId())
 							&& !myScannedcreatures.containsKey(creatureType.getId()))
+					.sorted((creature1, creature2) -> (int) (pos.distance(creature1.getApproximativePosition()) - pos.distance(creature2.getApproximativePosition())))
 					.toList();
 			if (unscannedCreatureTypes.isEmpty()) {
 				strategy = DroneStrategy.SURFACE;
 				Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 				return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 			}
-			double moveY = strategy.getY(pos.getY());
-			double moveX = moveX(moveY, unscannedCreatureTypes);
-			int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 || pos.getY() == 4100 ? 1 : 0;
+			Creature closestCreature = unscannedCreatureTypes.get(0);
+			Vector closestPosition = closestCreature.getApproximativePosition();
+			double moveY = closestPosition.getY() - 250;
+			double moveX = closestPosition.getX();
+			if (pos.getY() <= (moveY - 2000)) {
+				moveX = pos.getX();
+			}
+			int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2300 || pos.getY() == 4100 || pos.getY() == 6500 ? 1 : 0;
 			Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 			String action = "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " " + light;
 			for (Creature creature : creatureTypes.get(strategy.getInteger())) {
@@ -409,27 +410,6 @@ class Player {
 			}
 			return true;
 		}
-		private double moveX(double moveY, List<Creature> unscannedCreatureTypes) {
-			if (pos.getY() <= (moveY - 2000)) {
-				return pos.getX();
-			}
-			if (leftRight == StartLeftRight.LEFT) {
-				for (Creature unscannedCreatureType : unscannedCreatureTypes) {
-					String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
-					if ("TL".equals(radarPosition) || "BL".equals(radarPosition)) {
-						return 0;
-					}
-				}
-				return 9999;
-			}
-			for (Creature unscannedCreatureType : unscannedCreatureTypes) {
-				String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
-				if ("TR".equals(radarPosition) || "BR".equals(radarPosition)) {
-					return 9999;
-				}
-			}
-			return 0;
-		}
 		public double getX() {
 			return pos.getX();
 		}
@@ -455,9 +435,9 @@ class Player {
 			this.type = type; // (0 à 2)
 			this.approximativePositions.add(new ApproximativePosition(type));
 		}
-		public void updatePosition(int x, int y, int vx, int vy) {
-			this.pos = new Vector(x, y);
-			this.speed = new Vector(vx, vy);
+		public void updatePosition(Vector pos, Vector speed) {
+			this.pos = pos;
+			this.speed = speed;
 			visible = true;
 		}
 		public int getId() {
@@ -465,6 +445,9 @@ class Player {
 		}
 		public int getColor() {
 			return color;
+		}
+		public int getType() {
+			return type;
 		}
 		public Vector getPos() {
 			return pos;
@@ -483,21 +466,19 @@ class Player {
 			Vector dronePos = drone.getPos();
 			approximativePosition.updateApproximativePosition(dronePos, radar);
 			approximativePosition.putRadarDrone(drone, radar);
-			if (symetricCreature != null && turn < (type+1)*3) {
+			if (symetricCreature != null && turn <= (type+1)*3) {
 				ApproximativePosition symetricApproximativePosition = symetricCreature.last(turn);
 				Vector symmetricDronePos = dronePos.hsymmetric(Board.CENTER.getX());
 				String symmetricRadar = symmetric(radar);
 				symetricApproximativePosition.updateApproximativePosition(symmetricDronePos, symmetricRadar);
 			}
 		}
-		public ApproximativePosition last(int turn) {
-			ApproximativePosition approximativePosition = null;
-			if (approximativePositions.size() < turn ) {
-				approximativePosition = new ApproximativePosition(type);
-				approximativePositions.add(approximativePosition);
-			} else {
-				approximativePosition = approximativePositions.get(turn-1);
+		private ApproximativePosition last(int turn) {
+			if (approximativePositions.size() == turn) {
+				return approximativePositions.get(turn-1);
 			}
+			ApproximativePosition approximativePosition = approximativePositions.get(turn-2).clone();
+			approximativePositions.add(approximativePosition);
 			return approximativePosition;
 		}
 		private String symmetric(String radar) {
@@ -522,7 +503,13 @@ class Player {
 			myClosestDrone = myDrones.get(1);
 		}
 		public Vector getApproximativePosition() {
+			if (visible) {
+				return pos;
+			}
 			return approximativePositions.get(approximativePositions.size()-1).getPos();
+		}
+		public List<ApproximativePosition> approximativePositions() {
+			return approximativePositions;
 		}
 		public Drone getMyClosestDrone() {
 			return myClosestDrone;
@@ -534,13 +521,20 @@ class Player {
 		private double yMin;
 		private double yMax;
 		private Map<Drone, String> radarDrone = new HashMap<>();
-		public ApproximativePosition(int type) {
-			this.xMin = 0;
-			this.xMax = 9999;
-			this.yMin = yMin(type);
-			this.yMax = yMax(type);
+		private ApproximativePosition(double xMin, double xMax, double yMin, double yMax) {
+			this.xMin = xMin;
+			this.xMax = xMax;
+			this.yMin = yMin;
+			this.yMax = yMax;
+			this.radarDrone = new HashMap<>();
 		}
-		private double yMin(int type) {
+		public ApproximativePosition clone() {
+			return new ApproximativePosition(this.xMin, this.xMax, this.yMin, this.yMax);
+		}
+		public ApproximativePosition(int type) {
+			this(0, 9999, yMin(type), yMax(type));
+		}
+		private static double yMin(int type) {
 			if (type == 0) {
 				return 2500;
 			}
@@ -549,7 +543,7 @@ class Player {
 			}
 			return 7500;
 		}
-		private double yMax(int type) {
+		private static double yMax(int type) {
 			if (type == 0) {
 				return 5000;
 			}
@@ -729,11 +723,14 @@ class Player {
 	        	int[] line = input.nextLineAsInts();
 	            int creatureId = line[0];
 	            Creature creature = creatures.get(creatureId);
-	            int creatureX = line[1];
-	            int creatureY = line[2];
-	            int creatureVx = line[3];
-	            int creatureVy = line[4];
-	            creature.updatePosition(creatureX, creatureY, creatureVx, creatureVy);
+	            Vector position = new Vector(line[1], line[2]);
+	            Vector speed = new Vector(line[3], line[4]);
+	            creature.updatePosition(position, speed);
+	            if (creature.getColor() >= 0  && turn <= (creature.getType()+1)*3) {
+	            	Creature symetricCreature = symetricCreatures.get(creature.getId());
+	            	Vector symmetricPosition = position.hsymmetric(Board.CENTER.getX());
+	            	symetricCreature.updatePosition(symmetricPosition, speed.hsymmetric());
+	            }
 	        }
 	        int radarBlipCount = input.nextLineAsSingleInt();
 	        Set<Integer> creaturesStillPresent = new HashSet<>();
@@ -750,7 +747,6 @@ class Player {
 	            Creature creature = creatures.get(creatureId);
 	            Creature symetricCreature = symetricCreatures.get(creatureId);
 	            creature.updatePosMinMax(turn, drone, radar, symetricCreature);
-	            drone.updateRadar(creatureId, radar);
 	        }
 	        List<Creature> type0Creatures = creatureTypes.get(0).stream()
 	        		.filter(creature -> creaturesStillPresent.contains(creature.getId()))

@@ -6,7 +6,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import fr.eeid.codingame.io.InputTracer;
@@ -182,11 +181,14 @@ public class Board {
             int creatureId = line[0];
             Creature creature = creatures.get(creatureId);
             
-            int creatureX = line[1];
-            int creatureY = line[2];
-            int creatureVx = line[3];
-            int creatureVy = line[4];
-            creature.updatePosition(creatureX, creatureY, creatureVx, creatureVy);
+            Vector position = new Vector(line[1], line[2]);
+            Vector speed = new Vector(line[3], line[4]);
+            creature.updatePosition(position, speed);
+            if (creature.getColor() >= 0  && turn <= (creature.getType()+1)*3) {
+            	Creature symetricCreature = symetricCreatures.get(creature.getId());
+            	Vector symmetricPosition = position.hsymmetric(Board.CENTER.getX());
+            	symetricCreature.updatePosition(symmetricPosition, speed.hsymmetric());
+            }
         }
         
         int radarBlipCount = input.nextLineAsSingleInt();
@@ -204,7 +206,6 @@ public class Board {
             Creature creature = creatures.get(creatureId);
             Creature symetricCreature = symetricCreatures.get(creatureId);
             creature.updatePosMinMax(turn, drone, radar, symetricCreature);
-            drone.updateRadar(creatureId, radar);
         }
         List<Creature> type0Creatures = creatureTypes.get(0).stream()
         		.filter(creature -> creaturesStillPresent.contains(creature.getId()))

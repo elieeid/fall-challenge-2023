@@ -12,14 +12,23 @@ public class ApproximativePosition {
 	
 	private Map<Drone, String> radarDrone = new HashMap<>();
 	
-	public ApproximativePosition(int type) {
-		this.xMin = 0;
-		this.xMax = 9999;
-		this.yMin = yMin(type);
-		this.yMax = yMax(type);
+	private ApproximativePosition(double xMin, double xMax, double yMin, double yMax) {
+		this.xMin = xMin;
+		this.xMax = xMax;
+		this.yMin = yMin;
+		this.yMax = yMax;
+		this.radarDrone = new HashMap<>();
+	}
+	
+	public ApproximativePosition clone() {
+		return new ApproximativePosition(this.xMin, this.xMax, this.yMin, this.yMax);
 	}
 
-	private double yMin(int type) {
+	public ApproximativePosition(int type) {
+		this(0, 9999, yMin(type), yMax(type));
+	}
+
+	private static double yMin(int type) {
 		if (type == 0) {
 			return 2500;
 		}
@@ -29,7 +38,7 @@ public class ApproximativePosition {
 		return 7500;
 	}
 
-	private double yMax(int type) {
+	private static double yMax(int type) {
 		if (type == 0) {
 			return 5000;
 		}

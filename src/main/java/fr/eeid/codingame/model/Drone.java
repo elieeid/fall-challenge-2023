@@ -1,6 +1,5 @@
 package fr.eeid.codingame.model;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +16,6 @@ public class Drone {
 	private DroneStrategy strategy = DroneStrategy.DIVE;
 	private StartLeftRight leftRight = StartLeftRight.LEFT;
 	private Set<Integer> scanUnsavedCreatureIds = new HashSet<>();
-	private final Map<Integer, String> creaturesRadarPositions = new HashMap<>();
 
 	public Drone(int id, int droneX, int droneY, int emergency, int battery) {
 		this.id = id;
@@ -45,10 +43,6 @@ public class Drone {
 
 	public void addScanUnsaved(int creatureId) {
 		scanUnsavedCreatureIds.add(creatureId);
-	}
-
-	public void updateRadar(int creatureId, String radar) {
-		creaturesRadarPositions.put(creatureId, radar);
 	}
 
 	public void updateStrategy(Map<Integer, List<Creature>> creatureTypes, Map<Integer, Creature> myScannedcreatures,
@@ -88,9 +82,9 @@ public class Drone {
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
 		
-		long count = creatureTypes.get(strategy.getInteger()).stream()
+		long myStrategyScanUnsavedCreatureIds = creatureTypes.get(strategy.getInteger()).stream()
 				.filter(creature -> scanUnsavedCreatureIds.contains(creature.getId())).count();
-		if (count >= 2) {
+		if (myStrategyScanUnsavedCreatureIds >= 1) {
 			strategy = DroneStrategy.SURFACE;
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
@@ -99,17 +93,26 @@ public class Drone {
 		List<Creature> unscannedCreatureTypes = creatureTypes.get(strategy.getInteger()).stream()
 				.filter(creatureType -> !myScanUnsavedCreatureIds.contains(creatureType.getId())
 						&& !myScannedcreatures.containsKey(creatureType.getId()))
+				.sorted((creature1, creature2) -> (int) (pos.distance(creature1.getApproximativePosition()) - pos.distance(creature2.getApproximativePosition())))
 				.toList();
 		if (unscannedCreatureTypes.isEmpty()) {
 			strategy = DroneStrategy.SURFACE;
 			Vector moveWithoutCollision = getMoveWithoutCollision(pos.getX(), 500, visibleMonsters);
 			return "MOVE " + (int) moveWithoutCollision.getX() + " " + (int) moveWithoutCollision.getY() + " 0";
 		}
+		
+		//unscannedCreatureTypes.sort(Comparator.comparing(creature -> pos.distance(creature.getApproximativePosition())));
 
-		double moveY = strategy.getY(pos.getY());
-		double moveX = moveX(moveY, unscannedCreatureTypes);
+		Creature closestCreature = unscannedCreatureTypes.get(0);
+		Vector closestPosition = closestCreature.getApproximativePosition();
+		
+		double moveY = closestPosition.getY() - 250;
+		double moveX = closestPosition.getX();
+		if (pos.getY() <= (moveY - 2000)) {
+			moveX = pos.getX();
+		}
 				
-		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2900 || pos.getY() == 4100 ? 1 : 0;
+		int light = pos.getY() >= (moveY - 2000) || pos.getY() == 2300 || pos.getY() == 4100 || pos.getY() == 6500 ? 1 : 0;
 				
 		Vector moveWithoutCollision = getMoveWithoutCollision(moveX, moveY, visibleMonsters);
 				
@@ -226,28 +229,6 @@ public class Drone {
 			return false;
 		}
 		return true;
-	}
-	
-	private double moveX(double moveY, List<Creature> unscannedCreatureTypes) {
-		if (pos.getY() <= (moveY - 2000)) {
-			return pos.getX();
-		}
-		if (leftRight == StartLeftRight.LEFT) {
-			for (Creature unscannedCreatureType : unscannedCreatureTypes) {
-				String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
-				if ("TL".equals(radarPosition) || "BL".equals(radarPosition)) {
-					return 0;
-				}
-			}
-			return 9999;
-		}
-		for (Creature unscannedCreatureType : unscannedCreatureTypes) {
-			String radarPosition = creaturesRadarPositions.get(unscannedCreatureType.getId());
-			if ("TR".equals(radarPosition) || "BR".equals(radarPosition)) {
-				return 9999;
-			}
-		}
-		return 0;
 	}
 
 	public double getX() {

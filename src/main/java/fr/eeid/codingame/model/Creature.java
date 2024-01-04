@@ -23,9 +23,9 @@ public class Creature {
 		this.approximativePositions.add(new ApproximativePosition(type));
 	}
 
-	public void updatePosition(int x, int y, int vx, int vy) {
-		this.pos = new Vector(x, y);
-		this.speed = new Vector(vx, vy);
+	public void updatePosition(Vector pos, Vector speed) {
+		this.pos = pos;
+		this.speed = speed;
 		visible = true;
 	}
 
@@ -35,6 +35,10 @@ public class Creature {
 
 	public int getColor() {
 		return color;
+	}
+
+	public int getType() {
+		return type;
 	}
 
 	public Vector getPos() {
@@ -59,7 +63,7 @@ public class Creature {
 		approximativePosition.updateApproximativePosition(dronePos, radar);
 		approximativePosition.putRadarDrone(drone, radar);
 		
-		if (symetricCreature != null && turn < (type+1)*3) {
+		if (symetricCreature != null && turn <= (type+1)*3) {
 			ApproximativePosition symetricApproximativePosition = symetricCreature.last(turn);
 			Vector symmetricDronePos = dronePos.hsymmetric(Board.CENTER.getX());
 			String symmetricRadar = symmetric(radar);
@@ -68,14 +72,12 @@ public class Creature {
 		}
 	}
 
-	public ApproximativePosition last(int turn) {
-		ApproximativePosition approximativePosition = null;
-		if (approximativePositions.size() < turn ) {
-			approximativePosition = new ApproximativePosition(type);
-			approximativePositions.add(approximativePosition);
-		} else {
-			approximativePosition = approximativePositions.get(turn-1);
+	private ApproximativePosition last(int turn) {
+		if (approximativePositions.size() == turn) {
+			return approximativePositions.get(turn-1);
 		}
+		ApproximativePosition approximativePosition = approximativePositions.get(turn-2).clone();
+		approximativePositions.add(approximativePosition);
 		return approximativePosition;
 	}
 
@@ -103,7 +105,13 @@ public class Creature {
 	}
 
 	public Vector getApproximativePosition() {
+		if (visible) {
+			return pos;
+		}
 		return approximativePositions.get(approximativePositions.size()-1).getPos();
+	}
+	public List<ApproximativePosition> approximativePositions() {
+		return approximativePositions;
 	}
 
 	public Drone getMyClosestDrone() {
